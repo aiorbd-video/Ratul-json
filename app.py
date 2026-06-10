@@ -7,15 +7,15 @@ from Crypto.Cipher import AES
 
 app = Flask(__name__)
 
-# ডিক্রিপশন করার মেইন মেথড (ভেরিয়েবল থেকে ডাটা রিড করবে)
+# কমন ডিক্রিপশন মেثড
 def decrypt_server_file(file_path_env_name):
-    # এনভায়রনমেন্ট ভেরিয়েবল থেকে আসল ইউআরএল, কী এবং আইভি তুলে আনা হচ্ছে
     target_url = os.environ.get(file_path_env_name)
     secret_key = os.environ.get("AES_KEY")
     secret_iv = os.environ.get("AES_IV")
     
+    # ভেরিয়েবল মিসিং থাকলে এরর হ্যান্ডেলিং
     if not target_url or not secret_key or not secret_iv:
-        return {"error": "Missing Configuration", "details": "Environment variables are not configured properly."}
+        return {"error": "Configuration Missing", "details": f"Please set {file_path_env_name}, AES_KEY, and AES_IV in Env."}
     
     headers = {'User-Agent': 'Mozilla/5.0'}
     
@@ -40,9 +40,9 @@ def decrypt_server_file(file_path_env_name):
             return clean_json
             
     except Exception as e:
-        return {"error": f"Failed to decrypt requested file", "details": str(e)}
+        return {"error": "Decryption Failed", "details": str(e)}
 
-# ১ নম্বর ইউআরএল: live-events ডাটার জন্য
+# ১ নম্বর এন্ডপয়েন্ট: live-events ডাটার জন্য
 @app.route('/live-events')
 def live_events():
     data = decrypt_server_file("URL_LIVE_EVENTS")
@@ -50,7 +50,7 @@ def live_events():
         return jsonify(data), 500
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
-# ২ নম্বর ইউআরএল: eventCats ডাটার জন্য
+# ২ নম্বর এন্ডপয়েন্ট: event-cats ডাটার জন্য
 @app.route('/event-cats')
 def event_cats():
     data = decrypt_server_file("URL_EVENT_CATS")
@@ -58,7 +58,7 @@ def event_cats():
         return jsonify(data), 500
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
-# ৩ নম্বর ইউআরএল: app-config ডাটার জন্য
+# ৩ নম্বর এন্ডপয়েন্ট: app-config ডাটার জন্য
 @app.route('/app-config')
 def app_config():
     data = decrypt_server_file("URL_APP_CONFIG")
@@ -66,14 +66,25 @@ def app_config():
         return jsonify(data), 500
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
+# ৪ নম্বর নতুন এন্ডপয়েন্ট: আপনার ৪র্থ লিংকের জন্য (যেমন: চ্যানেলস বা অন্য কিছু)
+@app.route('/channels')
+def channels():
+    data = decrypt_server_file("URL_FOURTH_LINK")
+    if isinstance(data, dict) and "error" in data:
+        return jsonify(data), 500
+    return jsonify(data) if isinstance(data, (dict, list)) else data
+
+# হোম পেজ রুট (মেইন ডোমেইনে ঢুকলে যা দেখাবে)
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Server is Running securely",
+        "status": "Server is Running Securely",
+        "author": "Ratul",
         "endpoints": {
-            "Live Events Data": "/live-events",
-            "Event Categories Data": "/event-cats",
-            "App Configuration Data": "/app-config"
+            "Live Events": "/live-events",
+            "Event Categories": "/event-cats",
+            "App Configuration": "/app-config",
+            "Channels/Extra Data": "/channels"
         }
     })
 
