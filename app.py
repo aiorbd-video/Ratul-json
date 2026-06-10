@@ -7,18 +7,25 @@ from Crypto.Cipher import AES
 
 app = Flask(__name__)
 
-# ডিক্রিপশন করার মেইন মেথড (কমন ফাংশন)
-def decrypt_server_file(file_name):
-    base_url = f"https://ghdnewhsjsnb9.top/{file_name}"
+# ডিক্রিপশন করার মেইন মেথড (ভেরিয়েবল থেকে ডাটা রিড করবে)
+def decrypt_server_file(file_path_env_name):
+    # এনভায়রনমেন্ট ভেরিয়েবল থেকে আসল ইউআরএল, কী এবং আইভি তুলে আনা হচ্ছে
+    target_url = os.environ.get(file_path_env_name)
+    secret_key = os.environ.get("AES_KEY")
+    secret_iv = os.environ.get("AES_IV")
+    
+    if not target_url or not secret_key or not secret_iv:
+        return {"error": "Missing Configuration", "details": "Environment variables are not configured properly."}
+    
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
-        response = requests.get(base_url, headers=headers, timeout=10)
+        response = requests.get(target_url, headers=headers, timeout=10)
         encrypted_text = response.text.strip()
         
-        # আমাদের উদ্ধার করা মাস্টার কী এবং আইভি
-        key = b"UC7aw51AjnDYjkFw"
-        iv = b"DeEwhulLVbtIGsYS"
+        # স্ট্রিং কী এবং আইভি-কে বাইট-এ রূপান্তর
+        key = secret_key.encode('utf-8')
+        iv = secret_iv.encode('utf-8')
         
         cipher = AES.new(key, AES.MODE_CBC, iv)
         encrypted_bytes = base64.b64decode(encrypted_text)
@@ -27,45 +34,42 @@ def decrypt_server_file(file_name):
         padding_len = decrypted_bytes[-1]
         clean_json = decrypted_bytes[:-padding_len].decode('utf-8')
         
-        # ডাটাটি যদি JSON ফরম্যাটের হয় তবে অবজেক্ট রিটার্ন করবে, নাহলে ডিরেক্ট প্লেইন টেক্সট
         try:
             return json.loads(clean_json)
         except:
             return clean_json
             
     except Exception as e:
-        return {"error": f"Failed to decrypt {file_name}", "details": str(e)}
+        return {"error": f"Failed to decrypt requested file", "details": str(e)}
 
-# ১ নম্বর ইউআরএল: categories/live-events.txt এর জন্য
+# ১ নম্বর ইউআরএল: live-events ডাটার জন্য
 @app.route('/live-events')
 def live_events():
-    # যেহেতু এটি একটি ফোল্ডারের ভেতরে, তাই পাথসহ পাস করলাম
-    data = decrypt_server_file("categories/live-events.txt")
+    data = decrypt_server_file("URL_LIVE_EVENTS")
     if isinstance(data, dict) and "error" in data:
         return jsonify(data), 500
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
-# ২ নম্বর ইউআরএল: eventCats.txt এর জন্য
+# ২ নম্বর ইউআরএল: eventCats ডাটার জন্য
 @app.route('/event-cats')
 def event_cats():
-    data = decrypt_server_file("eventCats.txt")
+    data = decrypt_server_file("URL_EVENT_CATS")
     if isinstance(data, dict) and "error" in data:
         return jsonify(data), 500
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
-# ৩ নম্বর ইউআরএল: app.txt এর জন্য
+# ৩ নম্বর ইউআরএল: app-config ডাটার জন্য
 @app.route('/app-config')
 def app_config():
-    data = decrypt_server_file("app.txt")
+    data = decrypt_server_file("URL_APP_CONFIG")
     if isinstance(data, dict) and "error" in data:
         return jsonify(data), 500
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
-# হোম পেজ রুট (কোনো পাথ না দিলে যা দেখাবে)
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Server is Running",
+        "status": "Server is Running securely",
         "endpoints": {
             "Live Events Data": "/live-events",
             "Event Categories Data": "/event-cats",
