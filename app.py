@@ -7,23 +7,21 @@ from Crypto.Cipher import AES
 
 app = Flask(__name__)
 
-# ডাইনামিক ডিক্রিপশন মেথড
+# ইউনিভার্সাল ডিক্রিপশন মেথড
 def decrypt_any_file(full_target_url):
-    secret_key = os.environ.get("AES_KEY")
-    secret_iv = os.environ.get("AES_IV")
-    
-    if not secret_key or not secret_iv:
-        return {"error": "Configuration Missing", "details": "AES_KEY or AES_IV not set in environment."}
+    secret_key = os.environ.get("AES_KEY", "UC7aw51AjnDYjkFw")
+    secret_iv = os.environ.get("AES_IV", "DeEwhulLVbtIGsYS")
     
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
         response = requests.get(full_target_url, headers=headers, timeout=10)
         if response.status_code != 200:
-            return {"error": "Server Error", "details": f"Server returned status code {response.status_code}"}
+            return {"error": "File Not Found on Main Server", "status_code": response.status_code}
             
         encrypted_text = response.text.strip()
         
+        # কী এবং আইভি-কে বাইট-এ রূপান্তর
         key = secret_key.encode('utf-8')
         iv = secret_iv.encode('utf-8')
         
@@ -34,6 +32,7 @@ def decrypt_any_file(full_target_url):
         padding_len = decrypted_bytes[-1]
         clean_json = decrypted_bytes[:-padding_len].decode('utf-8')
         
+        # যদি ডাটাটি JSON ফরম্যাটের হয় তবে অবজেক্ট করবে, নাহলে র টেক্সট
         try:
             return json.loads(clean_json)
         except:
@@ -42,22 +41,21 @@ def decrypt_any_file(full_target_url):
     except Exception as e:
         return {"error": "Decryption Failed", "details": str(e)}
 
-# ফিক্সড এন্ডপয়েন্ট ১: eventCats.txt
+# ফিক্সড রাউট ১: eventCats.txt
 @app.route('/event-cats')
 def event_cats():
-    url = os.environ.get("URL_EVENT_CATS", "https://ghdnewhsjsnb9.top/eventCats.txt")
+    url = "https://ghdnewhsjsnb9.top/eventCats.txt"
     return jsonify(decrypt_any_file(url))
 
-# ফিক্সড এন্ডপয়েন্ট ২: app.txt
+# ফিক্সড রাউট ২: app.txt
 @app.route('/app-config')
 def app_config():
-    url = os.environ.get("URL_APP_CONFIG", "https://ghdnewhsjsnb9.top/app.txt")
+    url = "https://ghdnewhsjsnb9.top/app.txt"
     return jsonify(decrypt_any_file(url))
 
-# 🌟 ম্যাজিক এন্ডপয়েন্ট: যেকোনো টেক্সট ফাইল ডাইনামিকালি ডিক্রিপ্ট করার জন্য
+# 🚀 ম্যাজিক রাউট: ফাইলের নাম যাই হোক, ফোল্ডারসহ বা ছাড়া—সব ডাইনামিকালি ডিক্রিপ্ট করবে
 @app.route('/get-data/<path:filename>')
 def get_dynamic_data(filename):
-    # ghdnewhsjsnb9.top ডোমেইনের পর আপনি যে পাথ-ই দেবেন, সেটির ফাইল নামাবে
     base_domain = "https://ghdnewhsjsnb9.top/"
     full_url = f"{base_domain}{filename}"
     
@@ -69,14 +67,15 @@ def get_dynamic_data(filename):
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Server is Running Dynamically",
-        "usage": "Use /get-data/FILENAME.txt to fetch and decrypt any file from server.",
-        "examples": [
-            "/event-cats",
-            "/app-config",
-            "/get-data/categories/live-events.txt",
-            "/get-data/channels/international-friendly4.txt"
-        ]
+        "status": "Server is Running Dynamically & Perfectly",
+        "author": "Ratul",
+        "usage": "Use /get-data/FILENAME.txt to decrypt any file.",
+        "quick_links": {
+            "Event Categories": "/event-cats",
+            "App Config": "/app-config",
+            "Live Events Example": "/get-data/live-events.txt",
+            "Match Stream Example": "/get-data/international-friendly4.txt"
+        }
     })
 
 if __name__ == "__main__":
