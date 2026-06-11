@@ -2,7 +2,7 @@ import os
 import requests
 import base64
 import json
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response
 from Crypto.Cipher import AES
 
 app = Flask(__name__)
@@ -12,7 +12,9 @@ def decrypt_any_file(full_target_url):
     secret_key = os.environ.get("AES_KEY", "UC7aw51AjnDYjkFw")
     secret_iv = os.environ.get("AES_IV", "DeEwhulLVbtIGsYS")
     
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36'
+    }
     
     try:
         response = requests.get(full_target_url, headers=headers, timeout=10)
@@ -32,49 +34,51 @@ def decrypt_any_file(full_target_url):
         padding_len = decrypted_bytes[-1]
         clean_json = decrypted_bytes[:-padding_len].decode('utf-8')
         
-        # যদি ডাটাটি JSON ফরম্যাটের হয় তবে অবজেক্ট করবে, নাহলে র টেক্সট
-        try:
-            return json.loads(clean_json)
-        except:
-            return clean_json
+        return clean_json
             
     except Exception as e:
-        return {"error": "Decryption Failed", "details": str(e)}
+        return json.dumps({"error": "Decryption Failed", "details": str(e)})
+
+# রেসপন্স হ্যান্ডেলার (JSON বা প্লেইন টেক্সট দুইটাই সুন্দরভাবে হ্যান্ডেল করবে)
+def make_web_response(raw_data):
+    if isinstance(raw_data, dict) and "error" in raw_data:
+        return jsonify(raw_data), 404
+    try:
+        # ডাটা যদি অলরেডি ভ্যালিড JSON স্ট্রিং হয়
+        json_object = json.loads(raw_data)
+        return jsonify(json_object)
+    except:
+        # ডাটা যদি প্লেইন টেক্সট বা ডিক্রিপ্ট হওয়া হিজিবিজি স্ট্রিং হয়
+        return Response(raw_data, mimetype='text/plain')
 
 # ফিক্সড রাউট ১: eventCats.txt
 @app.route('/event-cats')
 def event_cats():
     url = "https://ghdnewhsjsnb9.top/eventCats.txt"
-    return jsonify(decrypt_any_file(url))
+    return make_web_response(decrypt_any_file(url))
 
 # ফিক্সড রাউট ২: app.txt
 @app.route('/app-config')
 def app_config():
     url = "https://ghdnewhsjsnb9.top/app.txt"
-    return jsonify(decrypt_any_file(url))
+    return make_web_response(decrypt_any_file(url))
 
-# 🚀 ম্যাজিক রাউট: ফাইলের নাম যাই হোক, ফোল্ডারসহ বা ছাড়া—সব ডাইনামিকালি ডিক্রিপ্ট করবে
+# ডাইনামিক রাউট: যেকোনো ফাইলের জন্য
 @app.route('/get-data/<path:filename>')
 def get_dynamic_data(filename):
     base_domain = "https://ghdnewhsjsnb9.top/"
     full_url = f"{base_domain}{filename}"
-    
-    data = decrypt_any_file(full_url)
-    if isinstance(data, dict) and "error" in data:
-        return jsonify(data), 404
-    return jsonify(data) if isinstance(data, (dict, list)) else data
+    return make_web_response(decrypt_any_file(full_url))
 
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Server is Running Dynamically & Perfectly",
+        "status": "Server is Running Smoothly",
         "author": "Ratul",
-        "usage": "Use /get-data/FILENAME.txt to decrypt any file.",
-        "quick_links": {
+        "endpoints": {
             "Event Categories": "/event-cats",
             "App Config": "/app-config",
-            "Live Events Example": "/get-data/live-events.txt",
-            "Match Stream Example": "/get-data/international-friendly4.txt"
+            "Dynamic Fetch Example": "/get-data/international-friendly4.txt"
         }
     })
 
