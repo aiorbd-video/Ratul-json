@@ -7,19 +7,19 @@ from Crypto.Cipher import AES
 
 app = Flask(__name__)
 
-# ইউনিভার্সাল ডিক্রিপশন মেথড
+# ইউনিভার্সাল ডিক्रিপশন মেথড
 def decrypt_any_file(full_target_url):
     secret_key = os.environ.get("AES_KEY", "UC7aw51AjnDYjkFw")
     secret_iv = os.environ.get("AES_IV", "DeEwhulLVbtIGsYS")
     
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36'
     }
     
     try:
-        response = requests.get(full_target_url, headers=headers, timeout=10)
+        response = requests.get(full_target_url, headers=headers, timeout=12)
         if response.status_code != 200:
-            return {"error": "File Not Found on Main Server", "status_code": response.status_code}
+            return {"error": "Match File Not Found on Main Server", "status_code": response.status_code}
             
         encrypted_text = response.text.strip()
         
@@ -44,11 +44,9 @@ def make_web_response(raw_data):
     if isinstance(raw_data, dict) and "error" in raw_data:
         return jsonify(raw_data), 404
     try:
-        # ডাটা যদি অলরেডি ভ্যালিড JSON স্ট্রিং হয়
         json_object = json.loads(raw_data)
         return jsonify(json_object)
     except:
-        # ডাটা যদি প্লেইন টেক্সট বা ডিক্রিপ্ট হওয়া হিজিবিজি স্ট্রিং হয়
         return Response(raw_data, mimetype='text/plain')
 
 # ফিক্সড রাউট ১: eventCats.txt
@@ -63,7 +61,7 @@ def app_config():
     url = "https://ghdnewhsjsnb9.top/app.txt"
     return make_web_response(decrypt_any_file(url))
 
-# ডাইনামিক রাউট: যেকোনো ফাইলের জন্য
+# 🚀 ম্যাজিক রাউট: যেকোনো ম্যাচের স্লাগ ফাইল ডাইনামিকালি ডিক্রিপ্ট করার জন্য
 @app.route('/get-data/<path:filename>')
 def get_dynamic_data(filename):
     base_domain = "https://ghdnewhsjsnb9.top/"
@@ -73,13 +71,10 @@ def get_dynamic_data(filename):
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Server is Running Smoothly",
+        "status": "Automation Server is Running Perfectly",
         "author": "Ratul",
-        "endpoints": {
-            "Event Categories": "/event-cats",
-            "App Config": "/app-config",
-            "Dynamic Fetch Example": "/get-data/international-friendly4.txt"
-        }
+        "usage": "/get-data/SLUG.txt",
+        "example": "/get-data/live14-teri.txt"
     })
 
 if __name__ == "__main__":
