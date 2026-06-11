@@ -7,23 +7,23 @@ from Crypto.Cipher import AES
 
 app = Flask(__name__)
 
-# কমন ডিক্রিপশন মেثড
-def decrypt_server_file(file_path_env_name):
-    target_url = os.environ.get(file_path_env_name)
+# ডাইনামিক ডিক্রিপশন মেথড
+def decrypt_any_file(full_target_url):
     secret_key = os.environ.get("AES_KEY")
     secret_iv = os.environ.get("AES_IV")
     
-    # ভেরিয়েবল মিসিং থাকলে এরর হ্যান্ডেলিং
-    if not target_url or not secret_key or not secret_iv:
-        return {"error": "Configuration Missing", "details": f"Please set {file_path_env_name}, AES_KEY, and AES_IV in Env."}
+    if not secret_key or not secret_iv:
+        return {"error": "Configuration Missing", "details": "AES_KEY or AES_IV not set in environment."}
     
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
-        response = requests.get(target_url, headers=headers, timeout=10)
+        response = requests.get(full_target_url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return {"error": "Server Error", "details": f"Server returned status code {response.status_code}"}
+            
         encrypted_text = response.text.strip()
         
-        # স্ট্রিং কী এবং আইভি-কে বাইট-এ রূপান্তর
         key = secret_key.encode('utf-8')
         iv = secret_iv.encode('utf-8')
         
@@ -42,50 +42,41 @@ def decrypt_server_file(file_path_env_name):
     except Exception as e:
         return {"error": "Decryption Failed", "details": str(e)}
 
-# ১ নম্বর এন্ডপয়েন্ট: live-events ডাটার জন্য
-@app.route('/live-events')
-def live_events():
-    data = decrypt_server_file("URL_LIVE_EVENTS")
-    if isinstance(data, dict) and "error" in data:
-        return jsonify(data), 500
-    return jsonify(data) if isinstance(data, (dict, list)) else data
-
-# ২ নম্বর এন্ডপয়েন্ট: event-cats ডাটার জন্য
+# ফিক্সড এন্ডপয়েন্ট ১: eventCats.txt
 @app.route('/event-cats')
 def event_cats():
-    data = decrypt_server_file("URL_EVENT_CATS")
-    if isinstance(data, dict) and "error" in data:
-        return jsonify(data), 500
-    return jsonify(data) if isinstance(data, (dict, list)) else data
+    url = os.environ.get("URL_EVENT_CATS", "https://ghdnewhsjsnb9.top/eventCats.txt")
+    return jsonify(decrypt_any_file(url))
 
-# ৩ নম্বর এন্ডপয়েন্ট: app-config ডাটার জন্য
+# ফিক্সড এন্ডপয়েন্ট ২: app.txt
 @app.route('/app-config')
 def app_config():
-    data = decrypt_server_file("URL_APP_CONFIG")
+    url = os.environ.get("URL_APP_CONFIG", "https://ghdnewhsjsnb9.top/app.txt")
+    return jsonify(decrypt_any_file(url))
+
+# 🌟 ম্যাজিক এন্ডপয়েন্ট: যেকোনো টেক্সট ফাইল ডাইনামিকালি ডিক্রিপ্ট করার জন্য
+@app.route('/get-data/<path:filename>')
+def get_dynamic_data(filename):
+    # ghdnewhsjsnb9.top ডোমেইনের পর আপনি যে পাথ-ই দেবেন, সেটির ফাইল নামাবে
+    base_domain = "https://ghdnewhsjsnb9.top/"
+    full_url = f"{base_domain}{filename}"
+    
+    data = decrypt_any_file(full_url)
     if isinstance(data, dict) and "error" in data:
-        return jsonify(data), 500
+        return jsonify(data), 404
     return jsonify(data) if isinstance(data, (dict, list)) else data
 
-# ৪ নম্বর নতুন এন্ডপয়েন্ট: আপনার ৪র্থ লিংকের জন্য (যেমন: চ্যানেলস বা অন্য কিছু)
-@app.route('/channels')
-def channels():
-    data = decrypt_server_file("URL_FOURTH_LINK")
-    if isinstance(data, dict) and "error" in data:
-        return jsonify(data), 500
-    return jsonify(data) if isinstance(data, (dict, list)) else data
-
-# হোম পেজ রুট (মেইন ডোমেইনে ঢুকলে যা দেখাবে)
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Server is Running Securely",
-        "author": "Ratul",
-        "endpoints": {
-            "Live Events": "/live-events",
-            "Event Categories": "/event-cats",
-            "App Configuration": "/app-config",
-            "Channels/Extra Data": "/channels"
-        }
+        "status": "Server is Running Dynamically",
+        "usage": "Use /get-data/FILENAME.txt to fetch and decrypt any file from server.",
+        "examples": [
+            "/event-cats",
+            "/app-config",
+            "/get-data/categories/live-events.txt",
+            "/get-data/channels/international-friendly4.txt"
+        ]
     })
 
 if __name__ == "__main__":
