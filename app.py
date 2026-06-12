@@ -4,14 +4,35 @@ import base64
 import json
 from flask import Flask, jsonify, Response
 from Crypto.Cipher import AES
+from dotenv import load_dotenv
+
+# 🟢 লোকাল টেস্টের জন্য .env ফাইল লোড করবে, Railway-তে ক্লাউড ভেরিয়েবল থেকে সরাসরি রিড করবে
+load_dotenv()
 
 app = Flask(__name__)
 
-# ইউনিভার্সাল ডিক्रিপশন মেথড
+# =======================================================
+# 🛑 সিকিউরড কনফিগারেশন: কোনো আসল ভ্যালু বা চাবি কোডে নেই!
+# =======================================================
+SECRET_KEY = os.getenv("AES_KEY")
+SECRET_IV = os.getenv("AES_IV")
+BASE_CHANNEL_URL = os.getenv("BASE_CHANNEL_URL") # যেমন: https://ghdnewhsjsnb9.top/channels/
+
+# ভেরিয়েবল চেক করার সেফটি গার্ড
+if not all([SECRET_KEY, SECRET_IV, BASE_CHANNEL_URL]):
+    print("❌ CRITICAL ERROR: Environment Variables missing!")
+    exit(1)
+
+# বেস ডোমেইনটি স্বয়ংক্রিয়ভাবে BASE_CHANNEL_URL থেকে বের করে নেবে (channels/ বাদ দিয়ে)
+# এতে আপনার কোড আরও ডাইনামিক এবং নিরাপদ হবে
+BASE_DOMAIN = BASE_CHANNEL_URL.split("channels/")[0]
+
+# AES ডিক্রিপশনের জন্য সিক্রেট কী এবং আইভি-কে বাইট-এ কনভার্ট করে নেওয়া
+KEY_BYTES = SECRET_KEY.encode('utf-8')
+IV_BYTES = SECRET_IV.encode('utf-8')
+
+# ইউনিভার্সাল ডিক্রিপশন মেথড
 def decrypt_any_file(full_target_url):
-    secret_key = os.environ.get("AES_KEY", "UC7aw51AjnDYjkFw")
-    secret_iv = os.environ.get("AES_IV", "DeEwhulLVbtIGsYS")
-    
     headers = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36'
     }
@@ -23,11 +44,8 @@ def decrypt_any_file(full_target_url):
             
         encrypted_text = response.text.strip()
         
-        # কী এবং আইভি-কে বাইট-এ রূপান্তর
-        key = secret_key.encode('utf-8')
-        iv = secret_iv.encode('utf-8')
-        
-        cipher = AES.new(key, AES.MODE_CBC, iv)
+        # ক্লাউড ভেরিয়েবল থেকে আসা বাইট কী ব্যবহার হচ্ছে
+        cipher = AES.new(KEY_BYTES, AES.MODE_CBC, IV_BYTES)
         encrypted_bytes = base64.b64decode(encrypted_text)
         decrypted_bytes = cipher.decrypt(encrypted_bytes)
         
@@ -52,20 +70,19 @@ def make_web_response(raw_data):
 # ফিক্সড রাউট ১: eventCats.txt
 @app.route('/event-cats')
 def event_cats():
-    url = "https://ghdnewhsjsnb9.top/eventCats.txt"
+    url = f"{BASE_DOMAIN}eventCats.txt"
     return make_web_response(decrypt_any_file(url))
 
 # ফিক্সড রাউট ২: app.txt
 @app.route('/app-config')
 def app_config():
-    url = "https://ghdnewhsjsnb9.top/app.txt"
+    url = f"{BASE_DOMAIN}app.txt"
     return make_web_response(decrypt_any_file(url))
 
 # 🚀 ম্যাজিক রাউট: যেকোনো ম্যাচের স্লাগ ফাইল ডাইনামিকালি ডিক্রিপ্ট করার জন্য
 @app.route('/get-data/<path:filename>')
 def get_dynamic_data(filename):
-    base_domain = "https://ghdnewhsjsnb9.top/"
-    full_url = f"{base_domain}{filename}"
+    full_url = f"{BASE_DOMAIN}{filename}"
     return make_web_response(decrypt_any_file(full_url))
 
 @app.route('/')
