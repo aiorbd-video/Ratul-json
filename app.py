@@ -20,12 +20,15 @@ BASE_CHANNEL_URL = os.getenv("BASE_CHANNEL_URL") # যেমন: https://ghdnewh
 
 # ভেরিয়েবল চেক করার সেফটি গার্ড
 if not all([SECRET_KEY, SECRET_IV, BASE_CHANNEL_URL]):
-    print("❌ CRITICAL ERROR: Environment Variables missing!")
+    print("❌ CRITICAL ERROR: Environment Variables missing in .env or Railway!")
     exit(1)
 
-# বেস ডোমেইনটি স্বয়ংক্রিয়ভাবে BASE_CHANNEL_URL থেকে বের করে নেবে (channels/ বাদ দিয়ে)
-# এতে আপনার কোড আরও ডাইনামিক এবং নিরাপদ হবে
-BASE_DOMAIN = BASE_CHANNEL_URL.split("channels/")[0]
+# ডাইনামিক বেস ডোমেইন এক্সট্র্যাকশন (channels/ অংশটি বাদ দিয়ে মূল ডোমেইন বের করা)
+# এটি স্ল্যাশ (/) সংক্রান্ত যেকোনো এরর অটোমেটিক হ্যান্ডেল করবে
+if "channels/" in BASE_CHANNEL_URL:
+    BASE_DOMAIN = BASE_CHANNEL_URL.split("channels/")[0]
+else:
+    BASE_DOMAIN = BASE_CHANNEL_URL if BASE_CHANNEL_URL.endswith("/") else f"{BASE_CHANNEL_URL}/"
 
 # AES ডিক্রিপশনের জন্য সিক্রেট কী এবং আইভি-কে বাইট-এ কনভার্ট করে নেওয়া
 KEY_BYTES = SECRET_KEY.encode('utf-8')
@@ -34,7 +37,10 @@ IV_BYTES = SECRET_IV.encode('utf-8')
 # ইউনিভার্সাল ডিক্রিপশন মেথড
 def decrypt_any_file(full_target_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Mobile Safari/537.36',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
     }
     
     try:
@@ -44,7 +50,7 @@ def decrypt_any_file(full_target_url):
             
         encrypted_text = response.text.strip()
         
-        # ক্লাউড ভেরিয়েবল থেকে আসা বাইট কী ব্যবহার হচ্ছে
+        # ক্লাউড ভেরিয়েবল থেকে আসা বাইট কী ব্যবহার করে ডিক্রিপশন করা হচ্ছে
         cipher = AES.new(KEY_BYTES, AES.MODE_CBC, IV_BYTES)
         encrypted_bytes = base64.b64decode(encrypted_text)
         decrypted_bytes = cipher.decrypt(encrypted_bytes)
@@ -82,16 +88,19 @@ def app_config():
 # 🚀 ম্যাজিক রাউট: যেকোনো ম্যাচের স্লাগ ফাইল ডাইনামিকালি ডিক্রিপ্ট করার জন্য
 @app.route('/get-data/<path:filename>')
 def get_dynamic_data(filename):
-    full_url = f"{BASE_DOMAIN}{filename}"
+    # যদি রিকোয়েস্টে শুরুতে channels/ সহ স্লাগ আসে, তবে তা ক্লিন করে নেওয়া
+    clean_filename = filename.replace("channels/", "")
+    full_url = f"{BASE_DOMAIN}{clean_filename}"
     return make_web_response(decrypt_any_file(full_url))
 
 @app.route('/')
 def home():
     return jsonify({
-        "status": "Automation Server is Running Perfectly",
+        "status": "Automation API Server is Running Perfectly",
         "author": "Ratul",
         "usage": "/get-data/SLUG.txt",
-        "example": "/get-data/live14-teri.txt"
+        "example": "/get-data/live14-teri.txt",
+        "cached_domain_bridge": BASE_DOMAIN
     })
 
 if __name__ == "__main__":
